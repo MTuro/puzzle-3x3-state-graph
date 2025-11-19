@@ -12,6 +12,15 @@ movimentos_validos = {
     9: [6, 8]
 }
 
+def print_cfg(cfg):
+    for i in range(9):
+        val = cfg[i]
+        print(val, end=" ")
+        
+        if (i + 1) % 3 == 0:
+            print()  
+
+
 def gera_vizinhos_tuple(cfg):
     vazia = cfg.index(0) + 1  
     vizinhos = []
@@ -101,5 +110,6 @@ componentes = BFS_all(G)
 print("Numero de componentes conexos:", componentes)
 
 maior_dist, mais_distantes = distancia_ate_cfg_star(G)
-print("Maior distancia encontrada:", maior_dist)
-print("Exemplo de configuracao mais distante:", mais_distantes[0])
+print("Exemplo de configuracao viavel mais distante:")
+print_cfg(mais_distantes[0])
+print("Quantidade de movimentos necessaria:", maior_dist)

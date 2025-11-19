@@ -1,6 +1,5 @@
-from collections import deque
+from itertools import permutations
 
-# movimentos possíveis por posição (1..9)
 movimentos_validos = {
     1: [2, 4],
     2: [1, 3, 5],
@@ -13,100 +12,94 @@ movimentos_validos = {
     9: [6, 8]
 }
 
-def gera_vizinhos(cfg):
-    vazia = next(k for k, v in cfg.items() if v == 0)
+def gera_vizinhos_tuple(cfg):
+    vazia = cfg.index(0) + 1  
+    vizinhos = []
     for pos in movimentos_validos[vazia]:
-        nova = cfg.copy()
-        nova[vazia], nova[pos] = nova[pos], nova[vazia]
-        yield nova
+        lst = list(cfg)
+        i, j = vazia - 1, pos - 1
+        lst[i], lst[j] = lst[j], lst[i]
+        vizinhos.append(tuple(lst))
+    return vizinhos
 
-def montaGrafoEstados(cfg_inicial):
-    # Monta grafo de estados alcançáveis a partir do inicial.
-    H = {}
-    C = []
-    GrafoJogo = {}
 
-    t0 = tuple(cfg_inicial.values())
-    H[t0] = 0
-    C.append(cfg_inicial.copy())
-    GrafoJogo[0] = {"cfg": t0, "viz": []}
+#Tarefa 1
+def monta_grafo_completo():
+    Grafo = {}
+    
+    for p in permutations(range(9)): # 9! nos possiveis
+        Grafo[p] = []
 
-    fila = deque([0])
+    
+    for cfg in Grafo: #Arestas
+        for v in gera_vizinhos_tuple(cfg):
+            Grafo[cfg].append(v)
 
-    while fila:
-        u = fila.popleft()
-        cfg_u = C[u]
+    return Grafo
 
-        for viz in gera_vizinhos(cfg_u):
-            tv = tuple(viz.values())
 
-            if tv not in H:
-                idv = len(C)
-                H[tv] = idv
-                C.append(viz.copy())
-                GrafoJogo[idv] = {"cfg": tv, "viz": []}
-                fila.append(idv)
-            else:
-                idv = H[tv]
+#Tarefa 2
+def BFS(G, s):
+    visited = set()
+    parent = {}
+    L = []        
+    L.append([s]) 
 
-            # adiciona aresta não-direcionada
-            if idv not in GrafoJogo[u]["viz"]:
-                GrafoJogo[u]["viz"].append(idv)
-            if u not in GrafoJogo[idv]["viz"]:
-                GrafoJogo[idv]["viz"].append(u)
+    visited.add(s)
 
-    return GrafoJogo, H, C
+    i = 1
+    while True:
+        L.append([])
+        for u in L[i-1]:
+            for v in G[u]:
+                if v not in visited:
+                    visited.add(v)
+                    parent[v] = u
+                    L[i].append(v)
+        if len(L[i]) == 0:
+            break
+        i += 1
 
-def bfs_distencia(grafo, inicio_id):
-    dist = {inicio_id: 0}
-    q = deque([inicio_id])
-    while q:
-        u = q.popleft()
-        for v in grafo[u]["viz"]:
-            if v not in dist:
-                dist[v] = dist[u] + 1
-                q.append(v)
-    return dist
+    return visited, parent, L
 
-def formata_cfg_tuple(t):
-    s = ""
-    for i in range(9):
-        s += f"{t[i]} "
-        if (i+1) % 3 == 0:
-            s = s.rstrip() + ("\n" if i < 8 else "")
-    return s
 
-# configuração alvo cfg*
-cfg_star = {
-    1:1, 2:2, 3:3,
-    4:4, 5:5, 6:6,
-    7:7, 8:8, 9:0
-}
+def BFS_all(G):
+    visitados_global = set()
+    componentes = 0
 
-GrafoJogo, H, C = montaGrafoEstados(cfg_star)
+    for s in G:
+        if s not in visitados_global:
+            comp_visitados, _, _ = BFS(G, s)
+            visitados_global |= comp_visitados
+            componentes += 1
 
-num_nos = len(GrafoJogo)
-num_arestas = sum(len(GrafoJogo[i]["viz"]) for i in GrafoJogo) // 2
+    return componentes
 
-id_alvo = H.get(tuple(cfg_star.values()))
-if id_alvo is None:
-    print("configuração não encontrada no grafo.")
-else:
-    # distâncias a partir de cfg_star
-    dist = bfs_distencia(GrafoJogo, id_alvo)
 
-    # encontra a(s) maior(es) distância(s)
-    maior_dist = max(dist.values())
-    nos_mais_distantes = [nid for nid, d in dist.items() if d == maior_dist]
+# Tarefa 3
+cfg_star = (1,2,3,4,5,6,7,8,0)
 
-    # escolhe um estado mais difícil (pega o primeiro)
-    id_mais_dificil = nos_mais_distantes[0]
-    cfg_mais_dificil_tuple = GrafoJogo[id_mais_dificil]["cfg"]
+def distancia_ate_cfg_star(G):
+    visitados, parent, levels = BFS(G, cfg_star)
 
-    print("nos no grafo:", num_nos)
-    print("arestas no grafo:", num_arestas)
-    print("configuração inicial com maior número de movimentos:")
-    print(formata_cfg_tuple(cfg_mais_dificil_tuple))
-    print("representação em tupla:", cfg_mais_dificil_tuple)
-    print()
-    print("número de movimentos necessários (distância mínima):", maior_dist)
+    maior_dist = len(levels) - 2
+    mais_distantes = levels[-2]
+
+    return maior_dist, mais_distantes
+
+
+print("Montando grafo completo...")
+G = monta_grafo_completo()
+
+num_nos = len(G)
+num_arestas = sum(len(G[cfg]) for cfg in G) // 2
+
+print("Numero total de nos:", num_nos)
+print("Numero total de arestas:", num_arestas)
+
+componentes = BFS_all(G)
+print("Numero de componentes conexos:", componentes)
+
+maior_dist, mais_distantes = distancia_ate_cfg_star(G)
+print("Maior distancia encontrada:", maior_dist)
+print("Exemplo de configuracao mais distante:", mais_distantes[0])
